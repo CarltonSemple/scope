@@ -31,9 +31,8 @@ var (
 	}
 )
 
-func init() {
+func InitializeTopologies() {
 	containerOpts, _ := getContainerTopologyOptions()
-	fmt.Println(containerOpts)
 	containerFilters := []APITopologyOptionGroup{
 		{
 			ID:      "system",
