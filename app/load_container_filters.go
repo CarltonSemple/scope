@@ -1,10 +1,21 @@
 package app
 
 import (
-	"encoding/json"
 	"github.com/weaveworks/scope/render"
-	"os"
+	"math/rand"
+	"strings"
+	"time"
 )
+
+type arrayFlags []string
+func (i *arrayFlags) String() string {
+    return "my string representation"
+}
+func (i *arrayFlags) Set(value string) error {
+    *i = append(*i, value)
+    return nil
+}
+var ContainerLabelFlags arrayFlags
 
 type filter struct {
 	ID    string `json:"id"`
@@ -12,23 +23,36 @@ type filter struct {
 	Label string `json:"label"`
 }
 
+func init() {
+    rand.Seed(time.Now().UnixNano())
+}
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+func RandStringBytes(n int) string {
+    b := make([]byte, n)
+    for i := range b {
+        b[i] = letterBytes[rand.Intn(len(letterBytes))]
+    }
+    return string(b)
+}
+
 func getContainerTopologyOptions() ([]APITopologyOption, error) {
 	var toptions []APITopologyOption
-
-	// get JSON string from environment variable
-	s := os.Getenv("CONTAINER_FILTERS")
-
-	var filters []filter
-	json.Unmarshal([]byte(s), &filters)
-
-	for _, f := range filters {
-		v := APITopologyOption{Value: f.ID, Label: f.Title, filter: render.IsDesired(f.Label), filterPseudo: false}
-		toptions = append(toptions, v)
-	}
+	
+	// Add option to view weave system containers
+	system := APITopologyOption{Value: "system", Label: "System Containers", filter: render.IsSystem, filterPseudo: false}
+	toptions = append(toptions, system)
 
 	// Add option to not view weave system containers
 	notSystem := APITopologyOption{Value: "notsystem", Label: "Application Containers", filter: render.IsApplication, filterPseudo: false}
 	toptions = append(toptions, notSystem)
+
+	for _, f := range ContainerLabelFlags {
+		titleLabel := strings.Split(f, ":")
+
+		v := APITopologyOption{Value: RandStringBytes(10), Label: titleLabel[0], filter: render.IsDesired(titleLabel[1]), filterPseudo: false}
+		toptions = append(toptions, v)
+	}
 
 	// Add option to view all
 	all := APITopologyOption{Value: "all", Label: "All", filter: nil, filterPseudo: false}

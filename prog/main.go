@@ -166,6 +166,8 @@ func main() {
 		dryRun        bool
 	)
 
+	flag.Var(&app.ContainerLabelFlags, "app.container-label-filter", "Filters that correspond to container labels. Example: --app.container-label-filter=title:label")
+
 	// Flags that apply to both probe and app
 	flag.StringVar(&mode, "mode", "help", "For internal use.")
 	flag.BoolVar(&debug, "debug", false, "Force debug logging.")
@@ -258,6 +260,8 @@ func main() {
 	flag.StringVar(&flags.app.consulInf, "app.consul.inf", "", "The interface who's address I should advertise myself under in consul")
 
 	flag.Parse()
+
+	app.InitializeTopologies()
 
 	// Deal with common args
 	if debug {
