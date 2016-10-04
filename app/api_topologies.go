@@ -31,10 +31,27 @@ var (
 	}
 )
 
+func init() {
+	// Initialize topologies here since the tests require this
+	InitializeTopologies()
+}
+
+var containerOpts []APITopologyOption
+var containerFilters []APITopologyOptionGroup
+var unconnectedFilter []APITopologyOptionGroup
+
 // InitializeTopologies the topologies
 func InitializeTopologies() {
-	containerOpts, _ := getContainerTopologyOptions()
-	containerFilters := []APITopologyOptionGroup{
+	// reset the topologies if flags were added for more container filters (called by main rather than init)
+	fmt.Println(len(ContainerLabelFlags))
+	if len(ContainerLabelFlags) > 0 {
+		topologyRegistry = &registry{
+			items: map[string]APITopologyDesc{},
+		}
+	}
+
+	containerOpts, _ = getContainerTopologyOptions()
+	containerFilters = []APITopologyOptionGroup{
 		{
 			ID:      "system",
 			Default: "application",
@@ -59,7 +76,7 @@ func InitializeTopologies() {
 		},
 	}
 
-	unconnectedFilter := []APITopologyOptionGroup{
+	unconnectedFilter = []APITopologyOptionGroup{
 		{
 			ID:      "unconnected",
 			Default: "hide",
