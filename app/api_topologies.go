@@ -31,7 +31,7 @@ var (
 	}
 )
 
-// Initializes the topologies
+// InitializeTopologies the topologies
 func InitializeTopologies() {
 	containerOpts, _ := getContainerTopologyOptions()
 	containerFilters := []APITopologyOptionGroup{

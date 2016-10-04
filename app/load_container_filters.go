@@ -17,7 +17,7 @@ func (i *arrayFlags) Set(value string) error {
 	return nil
 }
 
-// To be set from the command line argument app.container-label-filter
+// ContainerLabelFlags is set from the command line argument app.container-label-filter in /scope/prog/main.go
 var ContainerLabelFlags arrayFlags
 
 type filter struct {
