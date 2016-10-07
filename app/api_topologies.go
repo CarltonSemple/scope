@@ -31,50 +31,20 @@ var (
 	}
 )
 
-func init() {
-	// Initialize topologies here since the tests require this
-	InitializeTopologies()
-}
-
-var containerOpts []APITopologyOption
+// ContainerOpts holds the container topology view options such as "all" and "system"
+var ContainerOpts []APITopologyOption
 var containerFilters []APITopologyOptionGroup
 var unconnectedFilter []APITopologyOptionGroup
 
 // InitializeTopologies the topologies
-func InitializeTopologies() {
-	// reset the topologies if flags were added for more container filters (called by main rather than init)
-	fmt.Println(len(ContainerLabelFlags))
-	if len(ContainerLabelFlags) > 0 {
-		topologyRegistry = &registry{
-			items: map[string]APITopologyDesc{},
-		}
-	}
+func init() {
+	// Place at the beginning of the ContainerOpts,
+	// the filter options that won't be changing
+	ContainerOpts = append(ContainerOpts, APITopologyOption{Value: "all", Label: "All", filter: nil, filterPseudo: false})
+	ContainerOpts = append(ContainerOpts, APITopologyOption{Value: "system", Label: "System Containers", filter: render.IsSystem, filterPseudo: false})
+	ContainerOpts = append(ContainerOpts, APITopologyOption{Value: "notsystem", Label: "Application Containers", filter: render.IsApplication, filterPseudo: false})
 
-	containerOpts, _ = getContainerTopologyOptions()
-	containerFilters = []APITopologyOptionGroup{
-		{
-			ID:      "system",
-			Default: "application",
-			Options: containerOpts,
-		},
-		{
-			ID:      "stopped",
-			Default: "running",
-			Options: []APITopologyOption{
-				{Value: "stopped", Label: "Stopped containers", filter: render.IsStopped, filterPseudo: false},
-				{Value: "running", Label: "Running containers", filter: render.IsRunning, filterPseudo: false},
-				{Value: "both", Label: "Both", filter: nil, filterPseudo: false},
-			},
-		},
-		{
-			ID:      "pseudo",
-			Default: "hide",
-			Options: []APITopologyOption{
-				{Value: "show", Label: "Show Uncontained", filter: nil, filterPseudo: false},
-				{Value: "hide", Label: "Hide Uncontained", filter: render.IsNotPseudo, filterPseudo: true},
-			},
-		},
-	}
+	buildContainerFilters()
 
 	unconnectedFilter = []APITopologyOptionGroup{
 		{
@@ -163,6 +133,38 @@ func InitializeTopologies() {
 			Rank:     4,
 		},
 	)
+}
+
+// CreateFilterOption provides an external interface to the package for creating an APITopologyOption
+func CreateFilterOption(value string, label string, filterFunc render.FilterFunc) APITopologyOption {
+	return APITopologyOption{Value: value, Label: label, filter: filterFunc, filterPseudo: false}
+}
+
+func buildContainerFilters() {
+	containerFilters = []APITopologyOptionGroup{
+		{
+			ID:      "system",
+			Default: "application",
+			Options: ContainerOpts,
+		},
+		{
+			ID:      "stopped",
+			Default: "running",
+			Options: []APITopologyOption{
+				{Value: "stopped", Label: "Stopped containers", filter: render.IsStopped, filterPseudo: false},
+				{Value: "running", Label: "Running containers", filter: render.IsRunning, filterPseudo: false},
+				{Value: "both", Label: "Both", filter: nil, filterPseudo: false},
+			},
+		},
+		{
+			ID:      "pseudo",
+			Default: "hide",
+			Options: []APITopologyOption{
+				{Value: "show", Label: "Show Uncontained", filter: nil, filterPseudo: false},
+				{Value: "hide", Label: "Hide Uncontained", filter: render.IsNotPseudo, filterPseudo: true},
+			},
+		},
+	}
 }
 
 // kubernetesFilters generates the current kubernetes filters based on the
@@ -268,6 +270,41 @@ type topologyStats struct {
 	NonpseudoNodeCount int `json:"nonpseudo_node_count"`
 	EdgeCount          int `json:"edge_count"`
 	FilteredNodes      int `json:"filtered_nodes"`
+}
+
+// RefreshTopologyOptions loads the container filter options into the topology
+func RefreshTopologyOptions() { //AddTopologyOptions(options ...APITopologyOption) {
+	/*for _, opt := range options {
+		ContainerOpts = append(ContainerOpts, opt)
+	}*/
+
+	buildContainerFilters()
+
+	delete(topologyRegistry.items, "containers")
+	delete(topologyRegistry.items, "containers-by-hostname")
+	delete(topologyRegistry.items, "containers-by-image")
+	topologyRegistry.add(
+		APITopologyDesc{
+			id:       "containers",
+			renderer: render.ContainerWithImageNameRenderer,
+			Name:     "Containers",
+			Rank:     2,
+			Options:  containerFilters,
+		},
+		APITopologyDesc{
+			id:       "containers-by-hostname",
+			parent:   "containers",
+			renderer: render.ContainerHostnameRenderer,
+			Name:     "by DNS name",
+			Options:  containerFilters,
+		},
+		APITopologyDesc{
+			id:       "containers-by-image",
+			parent:   "containers",
+			renderer: render.ContainerImageRenderer,
+			Name:     "by image",
+			Options:  containerFilters,
+		})
 }
 
 func (r *registry) add(ts ...APITopologyDesc) {

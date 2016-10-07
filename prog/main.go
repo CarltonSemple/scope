@@ -15,6 +15,7 @@ import (
 	"github.com/weaveworks/scope/app"
 	"github.com/weaveworks/scope/common/xfer"
 	"github.com/weaveworks/scope/probe/kubernetes"
+	"github.com/weaveworks/scope/render"
 	"github.com/weaveworks/weave/common"
 )
 
@@ -134,6 +135,28 @@ type appFlags struct {
 	consulInf       string
 }
 
+type filterFlags []string
+
+func (i *filterFlags) String() string {
+	var s string
+	for _, x := range *i {
+		s = x
+	}
+	return s
+}
+func (i *filterFlags) Set(value string) error {
+	*i = append(*i, value)
+
+	titleLabel := strings.Split(value, ":")
+	// TODO - allow escaping
+	v := app.CreateFilterOption(fmt.Sprintf("cmdlinefilter%d", len(*i)), titleLabel[0], render.IsDesired(titleLabel[1]))
+	app.ContainerOpts = append(app.ContainerOpts, v)
+	return nil
+}
+
+// containerLabelFlags is set from the command line argument app.container-label-filter in /scope/prog/main.go
+var containerLabelFlags filterFlags
+
 func logCensoredArgs() {
 	var prettyPrintedArgs string
 	// We show the flags followed by the args. This may change the original
@@ -165,8 +188,6 @@ func main() {
 		weaveHostname string
 		dryRun        bool
 	)
-
-	flag.Var(&app.ContainerLabelFlags, "app.container-label-filter", "Filters that correspond to container labels. Example: --app.container-label-filter=title:label")
 
 	// Flags that apply to both probe and app
 	flag.StringVar(&mode, "mode", "help", "For internal use.")
@@ -241,6 +262,7 @@ func main() {
 	flag.StringVar(&flags.app.weaveHostname, "app.weave.hostname", app.DefaultHostname, "Hostname to advertise in WeaveDNS")
 	flag.StringVar(&flags.app.containerName, "app.container.name", app.DefaultContainerName, "Name of this container (to lookup container ID)")
 	flag.StringVar(&flags.app.dockerEndpoint, "app.docker", app.DefaultDockerEndpoint, "Location of docker endpoint (to lookup container ID)")
+	flag.Var(&containerLabelFlags, "app.container-label-filter", "Add container label-based view filter, specified as title:label. Multiple flags are accepted. Example: --app.container-label-filter='Database Containers:role=db'")
 
 	flag.StringVar(&flags.app.collectorURL, "app.collector", "local", "Collector to use (local, dynamodb, or file)")
 	flag.StringVar(&flags.app.s3URL, "app.collector.s3", "local", "S3 URL to use (when collector is dynamodb)")
@@ -261,7 +283,7 @@ func main() {
 
 	flag.Parse()
 
-	app.InitializeTopologies()
+	app.RefreshTopologyOptions()
 
 	// Deal with common args
 	if debug {
