@@ -144,12 +144,37 @@ func (i *filterFlags) String() string {
 	}
 	return s
 }
+
 func (i *filterFlags) Set(value string) error {
 	*i = append(*i, value)
 
-	titleLabel := strings.Split(value, ":")
-	// TODO - allow escaping
-	v := app.CreateFilterOption(fmt.Sprintf("cmdlinefilter%d", len(*i)), titleLabel[0], render.HasLabel(titleLabel[1]))
+	//fmt.Printf("%q\n",value)
+	u := fmt.Sprintf("%q", value)
+	u = u[1 : len(u)-1]
+
+	soloColonFound := false
+	var title string
+	var label string
+	for k := 1; k < len(u); k++ {
+		if u[k] == ':' {
+			if u[k-1] != '\\' {
+				if soloColonFound == true {
+					fmt.Println("There are multiple unescaped colons")
+					return nil
+				}
+				soloColonFound = true
+				title = u[0:k]
+				label = u[k+1 : len(u)]
+			}
+		}
+	}
+
+	title = strings.Replace(title, "\\:", ":", -1)
+	title = strings.Replace(title, "\\", "", -1)
+	label = strings.Replace(label, "\\:", ":", -1)
+	label = strings.Replace(label, "\\", "", -1)
+
+	v := app.CreateFilterOption(fmt.Sprintf("cmdlinefilter%d", len(*i)), title, render.HasLabel(label))
 	app.ContainerOpts = append(app.ContainerOpts, v)
 	return nil
 }
