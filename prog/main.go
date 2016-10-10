@@ -149,7 +149,7 @@ func (i *filterFlags) Set(value string) error {
 
 	titleLabel := strings.Split(value, ":")
 	// TODO - allow escaping
-	v := app.CreateFilterOption(fmt.Sprintf("cmdlinefilter%d", len(*i)), titleLabel[0], render.IsDesired(titleLabel[1]))
+	v := app.CreateFilterOption(fmt.Sprintf("cmdlinefilter%d", len(*i)), titleLabel[0], render.HasLabel(titleLabel[1]))
 	app.ContainerOpts = append(app.ContainerOpts, v)
 	return nil
 }

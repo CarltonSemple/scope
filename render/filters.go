@@ -245,8 +245,8 @@ func IsApplication(n report.Node) bool {
 // IsSystem checks if the node is a "system" node
 var IsSystem = Complement(IsApplication)
 
-// IsDesired checks if the node has the desired label
-func IsDesired(label string) FilterFunc {
+// HasLabel checks if the node has the desired docker label
+func HasLabel(label string) FilterFunc {
 	return func(n report.Node) bool {
 		desiredKeyValue := strings.Split(label, "=")
 		value, _ := n.Latest.Lookup(docker.LabelPrefix + desiredKeyValue[0])
