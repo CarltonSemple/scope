@@ -171,7 +171,7 @@ func addContainerFiltersFromFlags(containerLabels containerLabelFilterFlagArray)
 
 		unescapeColons := regexp.MustCompile(`\\(\\:)`)
 		title := unescapeColons.ReplaceAllString(u[0:indices[0]+1], `:`)
-		label := unescapeColons.ReplaceAllString(u[indices[1]:len(u)], `:`)
+		label := unescapeColons.ReplaceAllString(u[indices[1]:], `:`)
 
 		v := app.CreateFilterOption(fmt.Sprintf("cmdlinefilter%d", i), title, render.HasLabel(label))
 		newTopologyOptions = append(newTopologyOptions, v)
