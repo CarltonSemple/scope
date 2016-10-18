@@ -280,8 +280,6 @@ type topologyStats struct {
 
 // AddContainerFilters adds to the topology registry's containerFilters
 func AddContainerFilters(newOptions ...APITopologyOption) {
-	fmt.Println(newOptions)
-	fmt.Println("calling...")
 	topologyRegistry.addContainerFilters(newOptions...)
 }
 
@@ -294,7 +292,6 @@ func (r *registry) addContainerFilters(newOptions ...APITopologyOption) {
 		//for _, optionGroup := range tmp.Options {
 		for i := 0; i < len(tmp.Options); i++ {
 			if tmp.Options[i].ID == "system" {
-				fmt.Println(tmp.Options[i].ID)
 				tmp.Options[i].Options = append(tmp.Options[i].Options, newOptions...)
 				r.items[key] = tmp
 			}
