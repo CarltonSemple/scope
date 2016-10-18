@@ -16,6 +16,16 @@ import (
 )
 
 const apiTopologyURL = "/api/topology/"
+const processesTopologyDescID = "processes"
+const processesByNameTopologyDescID = "processes-by-name"
+const containersTopologyDescID = "containers"
+const containersByHostnameTopologyDescID = "containers-by-hostname"
+const containersByImageTopologyDescID = "containers-by-image"
+const podsTopologyDescID = "pods"
+const replicaSetsTopologyDescID = "replica-sets"
+const deploymentsTopologyDescID = "deployments"
+const servicesTopologyDescID = "services"
+const hostsTopologyDescID = "hosts"
 
 var (
 	topologyRegistry = &registry{
@@ -31,24 +41,24 @@ var (
 	}
 )
 
-// ContainerOpts holds the container topology view options such as "all" and "system"
-var ContainerOpts []APITopologyOption
 var containerFilters []APITopologyOptionGroup
 var unconnectedFilter []APITopologyOptionGroup
 
 // InitializeTopologies the topologies
 func init() {
-	// Place at the beginning of the ContainerOpts,
+	// containerOpts holds the container topology view options such as "all" and "system"
+	var containerOpts []APITopologyOption
+	// Place at the beginning of the containerOpts,
 	// the filter options that won't be changing
-	ContainerOpts = append(ContainerOpts, APITopologyOption{Value: "all", Label: "All", filter: nil, filterPseudo: false})
-	ContainerOpts = append(ContainerOpts, APITopologyOption{Value: "system", Label: "System Containers", filter: render.IsSystem, filterPseudo: false})
-	ContainerOpts = append(ContainerOpts, APITopologyOption{Value: "notsystem", Label: "Application Containers", filter: render.IsApplication, filterPseudo: false})
+	containerOpts = append(containerOpts, APITopologyOption{Value: "all", Label: "All", filter: nil, filterPseudo: false})
+	containerOpts = append(containerOpts, APITopologyOption{Value: "system", Label: "System Containers", filter: render.IsSystem, filterPseudo: false})
+	containerOpts = append(containerOpts, APITopologyOption{Value: "notsystem", Label: "Application Containers", filter: render.IsApplication, filterPseudo: false})
 
 	containerFilters = []APITopologyOptionGroup{
 		{
 			ID:      "system",
 			Default: "application",
-			Options: ContainerOpts,
+			Options: containerOpts,
 		},
 		{
 			ID:      "stopped",
@@ -85,7 +95,7 @@ func init() {
 	// be the verb to get to that state
 	topologyRegistry.add(
 		APITopologyDesc{
-			id:          "processes",
+			id:          processesTopologyDescID,
 			renderer:    render.FilterUnconnected(render.ProcessWithContainerNameRenderer),
 			Name:        "Processes",
 			Rank:        1,
@@ -93,7 +103,7 @@ func init() {
 			HideIfEmpty: true,
 		},
 		APITopologyDesc{
-			id:          "processes-by-name",
+			id:          processesByNameTopologyDescID,
 			parent:      "processes",
 			renderer:    render.FilterUnconnected(render.ProcessNameRenderer),
 			Name:        "by name",
@@ -101,56 +111,56 @@ func init() {
 			HideIfEmpty: true,
 		},
 		APITopologyDesc{
-			id:       "containers",
+			id:       containersTopologyDescID,
 			renderer: render.ContainerWithImageNameRenderer,
 			Name:     "Containers",
 			Rank:     2,
 			Options:  containerFilters,
 		},
 		APITopologyDesc{
-			id:       "containers-by-hostname",
+			id:       containersByHostnameTopologyDescID,
 			parent:   "containers",
 			renderer: render.ContainerHostnameRenderer,
 			Name:     "by DNS name",
 			Options:  containerFilters,
 		},
 		APITopologyDesc{
-			id:       "containers-by-image",
+			id:       containersByImageTopologyDescID,
 			parent:   "containers",
 			renderer: render.ContainerImageRenderer,
 			Name:     "by image",
 			Options:  containerFilters,
 		},
 		APITopologyDesc{
-			id:          "pods",
+			id:          podsTopologyDescID,
 			renderer:    render.PodRenderer,
 			Name:        "Pods",
 			Rank:        3,
 			HideIfEmpty: true,
 		},
 		APITopologyDesc{
-			id:          "replica-sets",
+			id:          replicaSetsTopologyDescID,
 			parent:      "pods",
 			renderer:    render.ReplicaSetRenderer,
 			Name:        "replica sets",
 			HideIfEmpty: true,
 		},
 		APITopologyDesc{
-			id:          "deployments",
+			id:          deploymentsTopologyDescID,
 			parent:      "pods",
 			renderer:    render.DeploymentRenderer,
 			Name:        "deployments",
 			HideIfEmpty: true,
 		},
 		APITopologyDesc{
-			id:          "services",
+			id:          servicesTopologyDescID,
 			parent:      "pods",
 			renderer:    render.PodServiceRenderer,
 			Name:        "services",
 			HideIfEmpty: true,
 		},
 		APITopologyDesc{
-			id:       "hosts",
+			id:       hostsTopologyDescID,
 			renderer: render.HostRenderer,
 			Name:     "Hosts",
 			Rank:     4,
@@ -158,8 +168,8 @@ func init() {
 	)
 }
 
-// CreateFilterOption provides an external interface to the package for creating an APITopologyOption
-func CreateFilterOption(value string, label string, filterFunc render.FilterFunc) APITopologyOption {
+// MakeFilterOption provides an external interface to the package for creating an APITopologyOption
+func MakeFilterOption(value string, label string, filterFunc render.FilterFunc) APITopologyOption {
 	return APITopologyOption{Value: value, Label: label, filter: filterFunc, filterPseudo: false}
 }
 
@@ -199,7 +209,7 @@ func updateFilters(rpt report.Report, topologies []APITopologyDesc) []APITopolog
 	}
 	sort.Strings(ns)
 	for i, t := range topologies {
-		if t.id == "pods" || t.id == "services" || t.id == "deployments" || t.id == "replica-sets" {
+		if t.id == podsTopologyDescID || t.id == servicesTopologyDescID || t.id == deploymentsTopologyDescID || t.id == replicaSetsTopologyDescID {
 			topologies[i] = updateTopologyFilters(t, []APITopologyOptionGroup{
 				kubernetesFilters(ns...), k8sPseudoFilter,
 			})
@@ -269,27 +279,24 @@ type topologyStats struct {
 }
 
 // AddContainerFilters adds to the topology registry's containerFilters
-func AddContainerFilters(newOptions []APITopologyOption) {
-	topologyRegistry.addContainerFilters(newOptions)
+func AddContainerFilters(newOptions ...APITopologyOption) {
+	topologyRegistry.addContainerFilters(newOptions...)
 }
 
-func (r *registry) addContainerFilters(newOptions []APITopologyOption) {
+func (r *registry) addContainerFilters(newOptions ...APITopologyOption) {
 	r.Lock()
 	defer r.Unlock()
 
-	for _, o := range newOptions {
-		ContainerOpts = append(ContainerOpts, o)
+	for _, key := range []string{containersTopologyDescID, containersByHostnameTopologyDescID, containersByImageTopologyDescID} {
+		var tmp = r.items[key]
+		//for _, optionGroup := range tmp.Options {
+		for i := 0; i < len(tmp.Options); i++ {
+			if tmp.Options[i].ID == "system" {
+				tmp.Options[i].Options = append(tmp.Options[i].Options, newOptions...)
+				r.items[key] = tmp
+			}
+		}
 	}
-
-	var c = r.items["containers"]
-	var h = r.items["containers-by-hostname"]
-	var i = r.items["containers-by-image"]
-	c.Options[0].Options = ContainerOpts
-	h.Options[0].Options = ContainerOpts
-	i.Options[0].Options = ContainerOpts
-	r.items["containers"] = c
-	r.items["containers-by-hostname"] = h
-	r.items["containers-by-image"] = i
 }
 
 func (r *registry) add(ts ...APITopologyDesc) {
