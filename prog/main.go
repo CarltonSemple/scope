@@ -173,10 +173,10 @@ func addContainerFiltersFromFlags(containerLabels containerLabelFilterFlagArray)
 		title := unescapeColons.ReplaceAllString(u[0:indices[0]+1], `:`)
 		label := unescapeColons.ReplaceAllString(u[indices[1]:], `:`)
 
-		v := app.CreateFilterOption(fmt.Sprintf("cmdlinefilter%d", i), title, render.HasLabel(label))
+		v := app.MakeFilterOption(fmt.Sprintf("cmdlinefilter%d", i), title, render.HasLabel(label))
 		newTopologyOptions = append(newTopologyOptions, v)
 	}
-	app.AddContainerFilters(newTopologyOptions)
+	app.AddContainerFilters(newTopologyOptions...)
 }
 
 // containerLabelFlags is set from the command line argument app.container-label-filter in /scope/prog/main.go
