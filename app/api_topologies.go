@@ -15,17 +15,19 @@ import (
 	"github.com/weaveworks/scope/report"
 )
 
-const apiTopologyURL = "/api/topology/"
-const processesTopologyDescID = "processes"
-const processesByNameTopologyDescID = "processes-by-name"
-const containersTopologyDescID = "containers"
-const containersByHostnameTopologyDescID = "containers-by-hostname"
-const containersByImageTopologyDescID = "containers-by-image"
-const podsTopologyDescID = "pods"
-const replicaSetsTopologyDescID = "replica-sets"
-const deploymentsTopologyDescID = "deployments"
-const servicesTopologyDescID = "services"
-const hostsTopologyDescID = "hosts"
+const (
+	apiTopologyURL                     = "/api/topology/"
+	processesTopologyDescID            = "processes"
+	processesByNameTopologyDescID      = "processes-by-name"
+	containersTopologyDescID           = "containers"
+	containersByHostnameTopologyDescID = "containers-by-hostname"
+	containersByImageTopologyDescID    = "containers-by-image"
+	podsTopologyDescID                 = "pods"
+	replicaSetsTopologyDescID          = "replica-sets"
+	deploymentsTopologyDescID          = "deployments"
+	servicesTopologyDescID             = "services"
+	hostsTopologyDescID                = "hosts"
+)
 
 var (
 	topologyRegistry = &registry{
