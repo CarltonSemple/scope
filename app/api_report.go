@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -41,6 +42,8 @@ func makeProbeHandler(rep Reporter) CtxHandlerFunc {
 		for _, n := range rpt.Host.Nodes {
 			id, _ := n.Latest.Lookup(report.ControlProbeID)
 			hostname, _ := n.Latest.Lookup(host.HostName)
+			fmt.Println("hostname")
+			fmt.Println(hostname)
 			version, dt, _ := n.Latest.LookupEntry(host.ScopeVersion)
 			result = append(result, probeDesc{
 				ID:       id,

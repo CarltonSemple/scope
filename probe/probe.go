@@ -1,6 +1,8 @@
 package probe
 
 import (
+	"fmt"
+	//"encoding/json"
 	"sync"
 	"time"
 
@@ -78,6 +80,7 @@ func New(
 		spiedReports:    make(chan report.Report, reportBufferSize),
 		shortcutReports: make(chan report.Report, reportBufferSize),
 	}
+	log.Infof("New Probe")
 	return result
 }
 
@@ -98,6 +101,7 @@ func (p *Probe) AddTicker(ts ...Ticker) {
 
 // Start starts the probe
 func (p *Probe) Start() {
+	log.Infof("probe Start()")
 	p.done.Add(2)
 	go p.spyLoop()
 	go p.publishLoop()
@@ -117,6 +121,7 @@ func (p *Probe) Publish(rpt report.Report) {
 }
 
 func (p *Probe) spyLoop() {
+	log.Infof("spyLoop")
 	defer p.done.Done()
 	spyTick := time.Tick(p.spyInterval)
 
@@ -190,11 +195,17 @@ func (p *Probe) tag(r report.Report) report.Report {
 }
 
 func (p *Probe) drainAndPublish(rpt report.Report, rs chan report.Report) {
+	log.Infof("drainAndPublish")
+	fmt.Println("drainAndPublish from fmt")
 ForLoop:
 	for {
 		select {
 		case r := <-rs:
 			rpt = rpt.Merge(r)
+			//rawRpt, _ := json.Marshal(rpt)
+			//log.Infof("rpt:")
+			//fmt.Println(rpt)
+			//log.Infof(rpt)//rawRpt))
 		default:
 			break ForLoop
 		}

@@ -97,6 +97,12 @@ func (m LatestMap) Lookup(key string) (interface{}, bool) {
 	return v, ok
 }
 
+// LookupFixed returns the value for the given key. Lookup returns two boolean values
+func (m LatestMap) LookupFixed(key string) (interface{}, bool) {
+	v, ok := m.Map.Lookup(key)
+	return v, ok
+}
+
 // LookupEntry returns the raw entry for the given key.
 func (m LatestMap) LookupEntry(key string) (interface{}, time.Time, bool) {
 	if m.Map == nil {

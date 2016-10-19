@@ -101,6 +101,7 @@ func probeMain(flags probeFlags) {
 			targets = append(targets, defaultServiceHost)
 		}
 	} else if !flags.noApp {
+		log.Infof("flags.noApp")
 		targets = append(targets, fmt.Sprintf("localhost:%d", xfer.AppPort))
 	}
 	targets = append(targets, flag.Args()...)

@@ -95,6 +95,52 @@ func NewCollector(window time.Duration) Collector {
 func (c *collector) Add(_ context.Context, rpt report.Report, _ []byte) error {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
+	fmt.Println("Add()")
+
+	var containersToRemove []string 
+
+	fmt.Println("container:")
+	fmt.Println(rpt.Container.Shape)//rpt.Container)
+	for k, v := range rpt.Container.Nodes {
+    	fmt.Println(k)
+		if val, ok := v.Latest.Lookup("docker_env_A8_SERVICE"); ok {
+			fmt.Println("found it!")
+			fmt.Println(val)
+			// TODO - delete if value is equal to current space ID as found from the environment variable
+
+			// for now... delete all edges
+			v.Adjacency = report.EmptyIDList
+			v.Edges = report.EmptyEdgeMetadatas
+		} else {
+			containersToRemove = append(containersToRemove, k)
+			delete(rpt.Container.Nodes, k)
+			continue
+		}
+	}
+
+	// Remove the process view for now
+	rpt.Process = report.MakeTopology()
+
+	/*
+	for k, v := range rpt.Process.Nodes {
+		//fmt.Println("process:")
+		//fmt.Println(k)
+		//fmt.Println(v.Parents)
+		for _, containerID := range containersToRemove {
+			if cVal, ok := v.Parents.Lookup("container"); ok { 
+				//fmt.Println(ok)
+				//fmt.Println(cVal)
+				if containerID == cVal[0] {
+					//fmt.Println("removing ", containerID)
+					delete(rpt.Process.Nodes, k)
+					break
+				}
+			}
+		}
+	}*/
+
+
+	//rpt.Container = report.MakeTopology()
 	c.reports = append(c.reports, rpt)
 	c.timestamps = append(c.timestamps, mtime.Now())
 

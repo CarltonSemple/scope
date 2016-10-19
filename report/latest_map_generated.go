@@ -64,6 +64,16 @@ func (m StringLatestMap) Lookup(key string) (string, bool) {
 	return v.(string), true
 }
 
+// LookupFixed returns the value for the given key. Lookup returns two boolean values
+func (m StringLatestMap) LookupFixed(key string) (string, bool) {
+	v, ok := (LatestMap)(m).Map.Lookup(key)
+	if !ok {
+		var zero string
+		return zero, ok
+	}
+	return v.(string), ok
+}
+
 // LookupEntry returns the raw entry for the given key.
 func (m StringLatestMap) LookupEntry(key string) (string, time.Time, bool) {
 	v, timestamp, ok := (LatestMap)(m).LookupEntry(key)
