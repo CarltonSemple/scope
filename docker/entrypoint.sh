@@ -13,6 +13,8 @@ for arg in $@; do
     esac
 done
 
+echo "entrypoint"
+echo "$@"
 echo "$@" >/var/run/weave/scope-app.args
 echo "$@" >/var/run/weave/scope-probe.args
 

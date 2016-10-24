@@ -151,32 +151,34 @@ func (i *containerLabelFilterFlagArray) Set(value string) error {
 	return nil
 }
 
-func addContainerFiltersFromFlags(containerLabels containerLabelFilterFlagArray) {
+func makeContainerFiltersFromFlags(containerLabels containerLabelFilterFlagArray) []app.APITopologyOption{
 	var newTopologyOptions []app.APITopologyOption
 	i := 0
 	for _, value := range containerLabels {
 		u := fmt.Sprintf("%q", value)
 		u = u[1 : len(u)-1]
-
+		fmt.Println(u)
+		log.Infof("filter: ", u)
 		colonFinder := regexp.MustCompile(`[^\\](:)`)
 		indices := colonFinder.FindStringIndex(u)
 		if len(indices) == 0 {
 			fmt.Println("No unescaped colon found. This is needed to separate the title from the label")
-			return
+			return newTopologyOptions
 		}
 		if len(colonFinder.FindAllStringIndex(u, -1)) > 1 {
 			fmt.Println("Escape colons that are part of the title and label")
-			return
+			return newTopologyOptions
 		}
 
 		unescapeColons := regexp.MustCompile(`\\(\\:)`)
 		title := unescapeColons.ReplaceAllString(u[0:indices[0]+1], `:`)
 		label := unescapeColons.ReplaceAllString(u[indices[1]:], `:`)
 
-		v := app.MakeFilterOption(fmt.Sprintf("cmdlinefilter%d", i), title, render.HasLabel(label))
+		v := app.MakeFilterOption(fmt.Sprintf("cmdlinefilter%d", i), title, render.HasLabel(label), false)
 		newTopologyOptions = append(newTopologyOptions, v)
 	}
-	app.AddContainerFilters(newTopologyOptions...)
+	//app.AddContainerFilters(newTopologyOptions...)
+	return newTopologyOptions
 }
 
 // containerLabelFlags is set from the command line argument app.container-label-filter in /scope/prog/main.go
@@ -308,7 +310,8 @@ func main() {
 
 	flag.Parse()
 
-	addContainerFiltersFromFlags(containerLabelFlags)
+	//addContainerFiltersFromFlags(containerLabelFlags)
+	app.AddContainerFilters(makeContainerFiltersFromFlags(containerLabelFlags)...)
 
 	// Deal with common args
 	if debug {

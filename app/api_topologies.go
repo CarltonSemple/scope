@@ -9,6 +9,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"golang.org/x/net/context"
+	log "github.com/Sirupsen/logrus"
 
 	"github.com/weaveworks/scope/probe/kubernetes"
 	"github.com/weaveworks/scope/render"
@@ -30,8 +31,8 @@ const (
 )
 
 var (
-	topologyRegistry = &registry{
-		items: map[string]APITopologyDesc{},
+	topologyRegistry = &Registry{
+		Items: map[string]APITopologyDesc{},
 	}
 	k8sPseudoFilter = APITopologyOptionGroup{
 		ID:      "pseudo",
@@ -95,7 +96,7 @@ func init() {
 
 	// Topology option labels should tell the current state. The first item must
 	// be the verb to get to that state
-	topologyRegistry.add(
+	topologyRegistry.Add(
 		APITopologyDesc{
 			id:          processesTopologyDescID,
 			renderer:    render.FilterUnconnected(render.ProcessWithContainerNameRenderer),
@@ -170,11 +171,6 @@ func init() {
 	)
 }
 
-// MakeFilterOption provides an external interface to the package for creating an APITopologyOption
-func MakeFilterOption(value string, label string, filterFunc render.FilterFunc) APITopologyOption {
-	return APITopologyOption{Value: value, Label: label, filter: filterFunc, filterPseudo: false}
-}
-
 // kubernetesFilters generates the current kubernetes filters based on the
 // available k8s topologies.
 func kubernetesFilters(namespaces ...string) APITopologyOptionGroup {
@@ -229,10 +225,27 @@ func updateTopologyFilters(t APITopologyDesc, options []APITopologyOptionGroup) 
 	return t
 }
 
-// registry is a threadsafe store of the available topologies
-type registry struct {
+func MakeAPITopologyDesc(id string, renderer render.Renderer, name string, rank int, options []APITopologyOptionGroup, hideIfEmpty bool) APITopologyDesc {
+	return APITopologyDesc{id: id, renderer: renderer, Name: name, Rank: rank, HideIfEmpty: hideIfEmpty, Options: options}
+}
+
+func MakeAPITopologyDescWithParent(id string, parent string, renderer render.Renderer, name string, rank int, options []APITopologyOptionGroup, hideIfEmpty bool) APITopologyDesc {
+	return APITopologyDesc{id: id, parent: parent, renderer: renderer, Name: name, Rank: rank, HideIfEmpty: hideIfEmpty, Options: options}
+}
+
+func MakeAPITopologyOptionGroup(id string, Default string, options []APITopologyOption) APITopologyOptionGroup {
+	return APITopologyOptionGroup{ID:id, Default:Default, Options:options}
+}
+
+// MakeFilterOption provides an external interface to the package for creating an APITopologyOption
+func MakeFilterOption(value string, label string, filterFunc render.FilterFunc, pseudo bool) APITopologyOption {
+	return APITopologyOption{Value: value, Label: label, filter: filterFunc, filterPseudo: pseudo}
+}
+
+// Registry is a threadsafe store of the available topologies
+type Registry struct {
 	sync.RWMutex
-	items map[string]APITopologyDesc
+	Items map[string]APITopologyDesc
 }
 
 // APITopologyDesc is returned in a list by the /api/topology handler.
@@ -280,55 +293,71 @@ type topologyStats struct {
 	FilteredNodes      int `json:"filtered_nodes"`
 }
 
-// AddContainerFilters adds to the topology registry's containerFilters
+// AddContainerFilters adds to the topologyRegistry's containerFilters
 func AddContainerFilters(newOptions ...APITopologyOption) {
-	topologyRegistry.addContainerFilters(newOptions...)
+	topologyRegistry.AddContainerFilters(newOptions...)
 }
 
-func (r *registry) addContainerFilters(newOptions ...APITopologyOption) {
+// AddContainerFilters adds to this topology Registry's containerFilters
+func (r *Registry) AddContainerFilters(newOptions ...APITopologyOption) {
 	r.Lock()
 	defer r.Unlock()
 
 	for _, key := range []string{containersTopologyDescID, containersByHostnameTopologyDescID, containersByImageTopologyDescID} {
-		var tmp = r.items[key]
-		//for _, optionGroup := range tmp.Options {
+		var tmp = r.Items[key]
 		for i := 0; i < len(tmp.Options); i++ {
 			if tmp.Options[i].ID == "system" {
 				tmp.Options[i].Options = append(tmp.Options[i].Options, newOptions...)
-				r.items[key] = tmp
+				r.Items[key] = tmp
 			}
 		}
 	}
 }
 
-func (r *registry) add(ts ...APITopologyDesc) {
+// CountContainerFilters returns the number of container filters in the registry
+func (r *Registry) CountContainerFilters() int {
+	r.Lock()
+	defer r.Unlock()
+
+	for _, key := range []string{containersTopologyDescID, containersByHostnameTopologyDescID, containersByImageTopologyDescID} {
+		var tmp = r.Items[key]
+		for i := 0; i < len(tmp.Options); i++ {
+			if tmp.Options[i].ID == "system" {
+				return len(tmp.Options[i].Options)
+			}
+		}
+	}
+	return 0
+}
+
+func (r *Registry) Add(ts ...APITopologyDesc) {
 	r.Lock()
 	defer r.Unlock()
 	for _, t := range ts {
 		t.URL = apiTopologyURL + t.id
 
 		if t.parent != "" {
-			parent := r.items[t.parent]
+			parent := r.Items[t.parent]
 			parent.SubTopologies = append(parent.SubTopologies, t)
-			r.items[t.parent] = parent
+			r.Items[t.parent] = parent
 		}
 
-		r.items[t.id] = t
+		r.Items[t.id] = t
 	}
 }
 
-func (r *registry) get(name string) (APITopologyDesc, bool) {
+func (r *Registry) get(name string) (APITopologyDesc, bool) {
 	r.RLock()
 	defer r.RUnlock()
-	t, ok := r.items[name]
+	t, ok := r.Items[name]
 	return t, ok
 }
 
-func (r *registry) walk(f func(APITopologyDesc)) {
+func (r *Registry) walk(f func(APITopologyDesc)) {
 	r.RLock()
 	defer r.RUnlock()
 	descs := []APITopologyDesc{}
-	for _, desc := range r.items {
+	for _, desc := range r.Items {
 		if desc.parent != "" {
 			continue
 		}
@@ -341,8 +370,9 @@ func (r *registry) walk(f func(APITopologyDesc)) {
 }
 
 // makeTopologyList returns a handler that yields an APITopologyList.
-func (r *registry) makeTopologyList(rep Reporter) CtxHandlerFunc {
+func (r *Registry) makeTopologyList(rep Reporter) CtxHandlerFunc {
 	return func(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+		log.Infof("makeTopologyList")
 		report, err := rep.Report(ctx)
 		if err != nil {
 			respondWith(w, http.StatusInternalServerError, err)
@@ -352,7 +382,7 @@ func (r *registry) makeTopologyList(rep Reporter) CtxHandlerFunc {
 	}
 }
 
-func (r *registry) renderTopologies(rpt report.Report, req *http.Request) []APITopologyDesc {
+func (r *Registry) renderTopologies(rpt report.Report, req *http.Request) []APITopologyDesc {
 	topologies := []APITopologyDesc{}
 	req.ParseForm()
 	r.walk(func(desc APITopologyDesc) {
@@ -389,7 +419,7 @@ func decorateWithStats(rpt report.Report, renderer render.Renderer, decorator re
 	}
 }
 
-func (r *registry) rendererForTopology(topologyID string, values url.Values, rpt report.Report) (render.Renderer, render.Decorator, error) {
+func (r *Registry) rendererForTopology(topologyID string, values url.Values, rpt report.Report) (render.Renderer, render.Decorator, error) {
 	topology, ok := r.get(topologyID)
 	if !ok {
 		return nil, nil, fmt.Errorf("topology not found: %s", topologyID)
@@ -422,19 +452,22 @@ type reporterHandler func(context.Context, Reporter, http.ResponseWriter, *http.
 
 func captureReporter(rep Reporter, f reporterHandler) CtxHandlerFunc {
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		log.Infof("captureReporter")
 		f(ctx, rep, w, r)
 	}
 }
 
 type rendererHandler func(context.Context, render.Renderer, render.Decorator, report.Report, http.ResponseWriter, *http.Request)
 
-func (r *registry) captureRenderer(rep Reporter, f rendererHandler) CtxHandlerFunc {
+func (r *Registry) captureRenderer(rep Reporter, f rendererHandler) CtxHandlerFunc {
 	return func(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+		log.Infof("captureRenderer")
 		topologyID := mux.Vars(req)["topology"]
 		if _, ok := r.get(topologyID); !ok {
 			http.NotFound(w, req)
 			return
 		}
+		log.Infof("Registry get ", topologyID)
 		rpt, err := rep.Report(ctx)
 		if err != nil {
 			respondWith(w, http.StatusInternalServerError, err)

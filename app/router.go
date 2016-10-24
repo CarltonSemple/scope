@@ -119,6 +119,8 @@ func RegisterReportPostHandler(a Adder, router *mux.Router) {
 			reader = io.TeeReader(r.Body, &buf)
 		)
 
+		log.Infof("RegisterReportPostHandler")
+
 		gzipped := strings.Contains(r.Header.Get("Content-Encoding"), "gzip")
 		if !gzipped {
 			reader = io.TeeReader(r.Body, gzip.NewWriter(&buf))
@@ -148,6 +150,7 @@ func RegisterReportPostHandler(a Adder, router *mux.Router) {
 			rpt.WriteBinary(&buf, gzip.BestCompression)
 		}
 
+		log.Println("Adding report")
 		if err := a.Add(ctx, rpt, buf.Bytes()); err != nil {
 			log.Errorf("Error Adding report: %v", err)
 			respondWith(w, http.StatusInternalServerError, err)
@@ -174,6 +177,7 @@ func NewVersion(version, downloadURL string) {
 
 func apiHandler(rep Reporter) CtxHandlerFunc {
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		log.Infof("apiHandler")
 		report, err := rep.Report(ctx)
 		if err != nil {
 			respondWith(w, http.StatusInternalServerError, err)

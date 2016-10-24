@@ -73,17 +73,19 @@ func router(collector app.Collector, controlRouter app.ControlRouter, pipeRouter
 }
 
 func awsConfigFromURL(url *url.URL) (*aws.Config, error) {
-	if url.User == nil {
-		return nil, fmt.Errorf("Must specify username & password in URL")
-	}
-	password, _ := url.User.Password()
-	creds := credentials.NewStaticCredentials(url.User.Username(), password, "")
+	//if url.User == nil {
+	//	return nil, fmt.Errorf("Must specify username & password in URL")
+	//}
+	//password, _ := url.User.Password()
+	creds := credentials.NewStaticCredentials("url.User.Username()", "password", "")
 	config := aws.NewConfig().WithCredentials(creds)
 	if strings.Contains(url.Host, ".") {
 		config = config.WithEndpoint(fmt.Sprintf("http://%s", url.Host)).WithRegion("dummy")
 	} else {
 		config = config.WithRegion(url.Host)
 	}
+	fmt.Println("config:")
+	fmt.Println(config)
 	return config, nil
 }
 
@@ -171,6 +173,9 @@ func controlRouterFactory(userIDer multitenant.UserIDer, controlRouterURL string
 			return nil, err
 		}
 		return multitenant.NewSQSControlRouter(sqsConfig, userIDer, prefix), nil
+	} else if parsed.Scheme == "http" || parsed.Scheme == "https" {
+		fmt.Println("scheme: ", parsed.Scheme)
+		
 	}
 
 	return nil, fmt.Errorf("Invalid control router '%s'", controlRouterURL)

@@ -154,6 +154,8 @@ launch_docker4mac_app_command() {
 }
 
 launch() {
+    echo "hi"
+    echo "$@"
     check_not_running $SCOPE_CONTAINER_NAME $SCOPE_IMAGE_NAME
     docker rm -f $SCOPE_CONTAINER_NAME >/dev/null 2>&1 || true
     CONTAINER=$($(launch_command "$@"))
