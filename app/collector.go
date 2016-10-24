@@ -10,6 +10,7 @@ import (
 
 	"github.com/ugorji/go/codec"
 	"golang.org/x/net/context"
+	log "github.com/Sirupsen/logrus"
 
 	"github.com/weaveworks/scope/common/mtime"
 	"github.com/weaveworks/scope/report"
@@ -95,17 +96,18 @@ func NewCollector(window time.Duration) Collector {
 func (c *collector) Add(_ context.Context, rpt report.Report, _ []byte) error {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
-	fmt.Println("Add()")
+	log.Infof("Add()")
 
 	var containersToRemove []string 
 
-	fmt.Println("container:")
-	fmt.Println(rpt.Container.Shape)//rpt.Container)
+	//fmt.Println("container:")
+	//fmt.Println(rpt.Container.Shape)//rpt.Container)
 	for k, v := range rpt.Container.Nodes {
-    	fmt.Println(k)
-		if val, ok := v.Latest.Lookup("docker_env_A8_SERVICE"); ok {
-			fmt.Println("found it!")
-			fmt.Println(val)
+    	//fmt.Println(k)
+		if _, ok := v.Latest.Lookup("docker_env_A8_SERVICE"); ok {
+			//fmt.Println("found it!")
+			//fmt.Println(val)
+			
 			// TODO - delete if value is equal to current space ID as found from the environment variable
 
 			// for now... delete all edges

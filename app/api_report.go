@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"golang.org/x/net/context"
-
+	log "github.com/Sirupsen/logrus"
 	"github.com/weaveworks/scope/probe/host"
 	"github.com/weaveworks/scope/report"
 )
@@ -14,6 +14,7 @@ import (
 // Raw report handler
 func makeRawReportHandler(rep Reporter) CtxHandlerFunc {
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		log.Infof("makeRawReportHandler")
 		report, err := rep.Report(ctx)
 		if err != nil {
 			respondWith(w, http.StatusInternalServerError, err)
@@ -33,6 +34,7 @@ type probeDesc struct {
 // Probe handler
 func makeProbeHandler(rep Reporter) CtxHandlerFunc {
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		log.Infof("makeProbeHandler")
 		rpt, err := rep.Report(ctx)
 		if err != nil {
 			respondWith(w, http.StatusInternalServerError, err)
